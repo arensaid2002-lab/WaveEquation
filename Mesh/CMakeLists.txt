@@ -1,4 +1,4 @@
-add_library(Mesh STATIC src/MeshHandler.cpp)
+add_library(Mesh src/MeshHandler.cpp)
 
 target_include_directories(Mesh
 PUBLIC

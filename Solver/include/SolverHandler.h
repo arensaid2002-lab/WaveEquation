@@ -1,5 +1,8 @@
+#pragma once
+
 #include <Eigen/Dense>
-#include <iostream> 
+#include <iostream>
+
 using namespace Eigen;
 
 namespace Solver
@@ -7,10 +10,9 @@ namespace Solver
     class SolverHandler
     {
         public:
-            SolverHandler(float tol, float step_size, RowVectorXf Mesh ){};
+            SolverHandler(float CFL, RowVectorXf Mesh);
             ~SolverHandler(){};
 
-            MatrixXf Solve(RowVectorXf Mesh);
 
 
             
@@ -18,10 +20,10 @@ namespace Solver
             std::string status_operation = "Generating matrices and calculating Values"; 
             std::string status_process_done = "The program finished succesfully";
             
-            float tol_;
-            float step_size_;
+            float dx_;
+            float CFL_;
             RowVectorXf Mesh_;
-            RowVectorXf initial_conditions_;
+            
             
             
     };

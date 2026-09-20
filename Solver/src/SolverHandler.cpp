@@ -4,14 +4,11 @@
 
 namespace Solver
 {
-    SolverHandler::SolverHandler(float tol, float step_size, RowVectorXf Mesh)
+    SolverHandler::SolverHandler(float CFL, RowVectorXf Mesh)
     {
-        tol_ = tol;
-        step_size_ = step_size;
+        dx_ = Mesh(1) - Mesh(0);
+        CFL_ = CFL;
         Mesh_ = Mesh;
     }
-    MatrixXf SolverHandler::Solve(RowVectorXf Mesh)
-    {
-        // il fait quelque chose
-    }
+
 }
