@@ -23,7 +23,7 @@ namespace Solver
         VectorXf X(N);
         string scheme_direction = (CFL_ > 0)? "backward" : "forward";
 
-        #pragma omp parallel for schedule(static) num_threads(16)
+        #pragma omp parallel for schedule(static)
         for (Index i = 0; i < N; i++)
         {
             X(i) = u(i) - CFL_*(Ddx_i(dx_, i, u, scheme_direction, true));
@@ -34,9 +34,9 @@ namespace Solver
     {
         Index N = u.cols();
         MatrixXf A = MatrixXf::Zero(N,N);
-        string scheme_direction = (CFL_ > 0)? "forward" : "backward";
+        string scheme_direction = (CFL_ > 0)? "backward" : "forward";
 
-        #pragma omp parallel for schedule(static) num_threads(16)
+        #pragma omp parallel for schedule(static)
         for (Index i = 0; i < N; i++)
         {
             if(scheme_direction == "backward")
@@ -69,7 +69,7 @@ namespace Solver
     }
     MatrixXf SolverWaveEquation::Solve(string scheme)
     {
-        float dt = abs(CFL_*dx_*c_);
+        float dt = abs(CFL_*dx_/c_);
         
         Index N_t = static_cast<Index>(std::floor(t_/dt));         
         Index N = Mesh_.cols();

@@ -2,6 +2,8 @@
 
 Objectif : récupérer WaveEquation, comprendre sa construction et savoir quoi relancer après une modification. Les commandes partent de la **racine du dépôt**, là où se trouve le `CMakeLists.txt` principal, sauf indication contraire.
 
+**Choisir sa procédure : [Windows / Visual Studio 2026](#2-préparer-windows-et-vs-code), [macOS / Apple Clang](#macos-avec-apple-clang-et-homebrew), [Windows / Visual Studio 2022](#windows-avec-visual-studio-build-tools-2022) ou [Linux / GCC](#linux-avec-gcc-et-ninja).**
+
 ## 1. Comprendre les outils
 
 | Outil | Rôle |
@@ -9,7 +11,7 @@ Objectif : récupérer WaveEquation, comprendre sa construction et savoir quoi r
 | Git / GitHub | Partager le code et son historique. |
 | VS Code | Éditer les fichiers et piloter les autres outils. |
 | CMake | Lire les `CMakeLists.txt`, trouver les dépendances et générer la construction. |
-| MSVC ou GCC | Compiler le C++ en code machine. |
+| MSVC, Apple Clang ou GCC | Compiler le C++ en code machine. |
 | MSBuild ou Ninja | Organiser l'exécution des commandes de compilation et de liaison. |
 
 Une **cible** CMake est un élément à construire. Ici, `Mesh`, `NumMethods` et `Solver` sont des bibliothèques ; `WaveEquation` est l'exécutable qui les utilise.
@@ -42,7 +44,7 @@ code .
 
 Si `code` n'est pas reconnu, ouvrir le dossier avec **Fichier > Ouvrir un dossier**. Le dépôt possède déjà ses fichiers CMake : il n'est pas nécessaire de lancer « CMake: Quick Start » pour en créer d'autres.
 
-## 3. Configurer, compiler, exécuter
+## 3. Configurer, compiler, exécuter sous Windows
 
 ### Configurer
 
@@ -92,7 +94,7 @@ Pop-Location
 
 Les options `--preset`, `--build`, `--config` et `--target` sont décrites dans la [référence de la commande CMake](https://cmake.org/cmake/help/latest/manual/cmake.1.html).
 
-## 4. Faire la même chose dans VS Code
+## 4. Utiliser les presets Windows dans VS Code
 
 Avec le dossier racine ouvert et CMake Tools installé, utiliser la palette de commandes (`Ctrl+Shift+P`) :
 
@@ -134,19 +136,91 @@ La racine utilise `find_package(Eigen3 CONFIG QUIET)`. Une installation Eigen d�
 
 ### OpenMP et la cible Solver
 
-Actuellement, OpenMP est lié à `WaveEquation`, mais les directives `#pragma omp` sont dans les sources de `Solver`. Une dépendance de l'exécutable ne transmet pas ses options de compilation en remontant vers ses bibliothèques.
-
-Pour activer OpenMP sur ces boucles, ajouter dans `Solver/CMakeLists.txt`, après `add_library(Solver ...)` :
+Les directives `#pragma omp` se trouvent dans les sources de `Solver`. Le fichier [Solver/CMakeLists.txt](../Solver/CMakeLists.txt) contient désormais la liaison nécessaire :
 
 ```cmake
 target_link_libraries(Solver PUBLIC OpenMP::OpenMP_CXX)
 ```
 
-Puis reconfigurer et recompiler. C'est une modification de configuration à réaliser dans le projet ; le présent tutoriel ne l'applique pas. La cible importée transmet les options nécessaires au compilateur et à la liaison. Voir [FindOpenMP](https://cmake.org/cmake/help/latest/module/FindOpenMP.html).
+Cette ligne est déjà présente : la cible importée transmet les options de compilation et de liaison à `Solver` et à ses consommateurs. Après avoir récupéré cette correction avec Git, reconfigurer et recompiler. Voir [FindOpenMP](https://cmake.org/cmake/help/latest/module/FindOpenMP.html).
+
+Le nombre de threads n'est plus fixé à `16` dans les boucles. Il peut être réglé au lancement avec `OMP_NUM_THREADS`, par exemple `OMP_NUM_THREADS=4 ./WaveEquation` dans le dossier de l'exécutable sous macOS ou Linux. Ce réglage concerne l'exécution, tandis que `cmake --build ... --parallel` concerne la compilation.
 
 ## Autres environnements
 
 Le preset partagé impose Visual Studio 2026. Les commandes suivantes choisissent un autre générateur sans modifier ce fichier. Utiliser un dossier de build distinct pour chaque générateur.
+
+### macOS avec Apple Clang et Homebrew
+
+Cette procédure utilise **Apple Clang** pour compiler, **Ninja** pour construire et **libomp** pour OpenMP. Les commandes sont à exécuter dans Terminal, avec le shell habituel de macOS (`zsh`), ou dans le terminal intégré de VS Code.
+
+#### Installer les outils
+
+Installer les [Command Line Tools d'Apple](https://developer.apple.com/documentation/xcode/installing-the-command-line-tools/) et attendre la fin de l'installation :
+
+```bash
+xcode-select --install
+```
+
+Si macOS indique qu'ils sont déjà installés, passer à la suite. Ils fournissent notamment Apple Clang, le SDK macOS et Git.
+
+Installer ensuite [Homebrew](https://brew.sh/) s'il est absent. Suivre ses instructions de fin d'installation pour rendre `brew` accessible dans le terminal, puis installer les dépendances :
+
+```bash
+brew install cmake ninja libomp
+git --version
+cmake --version
+ninja --version
+/usr/bin/clang++ --version
+```
+
+Utiliser un CMake récent, comme celui fourni par Homebrew. Les [prérequis Homebrew](https://docs.brew.sh/Installation) dépendent de la version de macOS et du processeur. Les chemins de la configuration ci-dessous sont calculés avec `brew --prefix libomp`, sans supposer `/opt/homebrew` ou `/usr/local`.
+
+#### Récupérer et configurer le projet
+
+Pour une première copie :
+
+```bash
+git clone https://github.com/arensaid2002-lab/WaveEquation.git
+cd WaveEquation
+```
+
+Si le dépôt est déjà cloné, ouvrir sa racine et récupérer les changements avec `git pull`. Configurer ensuite :
+
+```bash
+WAVE_OPENMP_PREFIX="$(brew --prefix libomp)"
+cmake -S . -B build/macos-release -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_C_COMPILER=/usr/bin/clang \
+  -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+  -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp" \
+  -DOpenMP_CXX_INCLUDE_DIR="$WAVE_OPENMP_PREFIX/include" \
+  -DOpenMP_CXX_LIB_NAMES=omp \
+  -DOpenMP_omp_LIBRARY="$WAVE_OPENMP_PREFIX/lib/libomp.dylib"
+```
+
+Homebrew installe [libomp](https://formulae.brew.sh/formula/libomp) à part des chemins globaux. Les options ci-dessus indiquent les en-têtes, la bibliothèque et les drapeaux OpenMP à CMake. Le [test officiel de la formule libomp](https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/lib/libomp.rb) utilise aussi `-Xpreprocessor -fopenmp` avec les chemins d'en-têtes et de bibliothèque.
+
+`-S .` désigne les sources, `-B` choisit le dossier de construction et `-G Ninja` sélectionne le générateur. Eigen sera téléchargé automatiquement s'il n'est pas déjà détecté. La configuration doit trouver `OpenMP_CXX` et se terminer sans erreur.
+
+#### Compiler et lancer
+
+```bash
+cmake --build build/macos-release --target WaveEquation --parallel
+cd build/macos-release
+./WaveEquation
+cd ../..
+```
+
+Le programme affiche les résultats et écrit `build/macos-release/results.csv`. Une nouvelle exécution au même endroit remplace ce fichier. Après une modification du C++, relancer la commande de compilation avant l'exécution.
+
+Pour déboguer, reprendre la commande de configuration avec `-B build/macos-debug` et `-DCMAKE_BUILD_TYPE=Debug`, puis utiliser ce nouveau dossier pour compiler et lancer.
+
+#### Travailler dans VS Code sur Mac
+
+Installer les extensions **C/C++** et **CMake Tools**, ouvrir le dossier `WaveEquation`, puis utiliser **Terminal > Nouveau terminal** pour exécuter les commandes macOS ci-dessus. Le raccourci de la palette est `Cmd+Shift+P`. Les étapes de sélection de `MyPreset` décrites dans la section Windows concernent uniquement Visual Studio ; les commandes macOS choisissent explicitement Ninja.
+
+La procédure macOS est fondée sur la documentation des outils ; elle n'a pas été exécutée sur un Mac lors de la rédaction.
 
 ### Windows avec Visual Studio Build Tools 2022
 
@@ -174,8 +248,6 @@ cd ../..
 
 `-S` désigne les sources et `-B` le dossier généré. Avec **Ninja classique**, `CMAKE_BUILD_TYPE` choisit Debug ou Release pendant la configuration ; avec **Visual Studio**, le choix se fait à la construction via `--config`.
 
-Sur macOS, le preset Windows ne convient pas et il faut un compilateur accompagné d'un runtime OpenMP détectable par CMake. Ne pas supposer que le Clang livré par défaut suffit à cette configuration.
-
 ## 6. Le cycle quotidien avec Git
 
 | Situation | Action |
@@ -198,6 +270,10 @@ Avant un commit, vérifier `git status` et sélectionner uniquement les modifica
 | Générateur `Visual Studio 18 2026` absent | CMake 4.2 minimum et Build Tools 2026 ; sinon utiliser la procédure 2022. |
 | `cl.exe` introuvable ou échec du compilateur | Installation de la charge C++ et du SDK ; essayer le terminal développeur x64 de Visual Studio. |
 | `Could NOT find OpenMP` | Compilateur et runtime compatibles OpenMP ; consulter le journal de configuration. |
+| macOS : `brew` introuvable | Appliquer les instructions de fin d'installation de Homebrew, puis ouvrir un nouveau terminal. |
+| macOS : `omp.h` ou `libomp.dylib` introuvable | Vérifier `brew --prefix libomp`, puis reprendre toutes les options de la configuration macOS. |
+| macOS : `unsupported option '-fopenmp'` | Avec Apple Clang, reprendre les drapeaux `-Xpreprocessor -fopenmp` du guide. |
+| macOS : architectures incompatibles (`arm64` / `x86_64`) | Utiliser un terminal et une installation Homebrew de même architecture que la compilation ; sur Apple Silicon, privilégier l'environnement natif, puis configurer un nouveau dossier de build. |
 | Échec du téléchargement Eigen | Accès à GitLab et Git disponible, ou installation Eigen détectable avec `Eigen3_DIR`. |
 | Message « downloading and building Kokkos » | Le texte du message est incorrect : le dépôt configuré est bien celui d'Eigen. |
 | Générateur incompatible avec le cache | Choisir un nouveau dossier `-B`, sans réutiliser celui d'un autre générateur. |

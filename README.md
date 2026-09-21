@@ -10,7 +10,7 @@ $$
 
 L'exemple sert à explorer Euler explicite, Euler implicite, les conditions périodiques et la diffusion numérique. C'est un prototype d'apprentissage ; les limites actuelles sont précisées plus bas.
 
-**Pour prendre le projet en main : [tutoriel CMake pour l'équipe](docs/TUTORIEL_CMAKE.md).**
+**Pour prendre le projet en main : [tutoriel CMake pour l'équipe](docs/TUTORIEL_CMAKE.md).** Les procédures couvrent [Windows](#démarrage-rapide-sous-windows), [macOS](docs/TUTORIEL_CMAKE.md#macos-avec-apple-clang-et-homebrew) et [Linux](docs/TUTORIEL_CMAKE.md#linux-avec-gcc-et-ninja).
 
 ## Ce que contient le projet
 
@@ -19,7 +19,7 @@ L'exemple sert à explorer Euler explicite, Euler implicite, les conditions pér
 - Deux modes : `Solve("E")` pour l'explicite et `Solve("I")` pour l'implicite.
 - Des raccordements périodiques aux extrémités pour les différences avant et arrière.
 - Une résolution QR avec Eigen dans le mode implicite.
-- Des boucles de génération portant des directives OpenMP ; leur activation est détaillée dans le tutoriel.
+- Des boucles de génération parallélisées avec OpenMP, lié à la cible `Solver`.
 - L'affichage des résultats dans le terminal et leur export dans `results.csv`.
 
 ## Organisation
@@ -55,7 +55,13 @@ Pop-Location
 
 Avec ces commandes, le fichier de résultats se trouve dans `out/build/MyPreset/results.csv`. Une nouvelle exécution dans ce même dossier remplace ce fichier. Le programme affiche aussi la matrice dans le terminal.
 
-Le preset fourni est spécifique à Windows et Build Tools 2026. Le tutoriel présente aussi les commandes pour [Visual Studio 2022 et Linux](docs/TUTORIEL_CMAKE.md#autres-environnements).
+Le tutoriel présente aussi les commandes pour [Visual Studio 2022 et Linux](docs/TUTORIEL_CMAKE.md#autres-environnements).
+
+## Démarrage sous macOS
+
+La [procédure macOS du tutoriel](docs/TUTORIEL_CMAKE.md#macos-avec-apple-clang-et-homebrew) guide l'installation des outils Apple, de Homebrew, de CMake, de Ninja et de `libomp`, puis la configuration, la compilation et l'exécution. Elle indique explicitement à CMake où trouver OpenMP avec Apple Clang ; les chemins sont obtenus depuis Homebrew pour s'adapter à son installation.
+
+Sur Mac, suivre cette procédure dans Terminal ou dans le terminal intégré de VS Code. Le preset `MyPreset` fourni cible Visual Studio sous Windows.
 
 ## Modifier l'exemple
 
@@ -66,12 +72,14 @@ Les réglages se font actuellement dans [Main/main.cpp](Main/main.cpp), puis né
 | `nb_element` | `100` | Nombre de **points** du maillage, bornes incluses. |
 | `x1`, `x2` | `0`, `100` | Bornes spatiales. |
 | `c` | `300` | Paramètre de vitesse transmis au solveur. |
-| `t` | `10000` | Durée demandée ; voir les limites du calcul temporel ci-dessous. |
-| `CFL` | `-1` | Courant transmis au solveur ; son signe choisit actuellement le sens spatial. |
+| `t` | `10` | Durée demandée ; voir la remarque sur les temps exportés ci-dessous. |
+| `CFL` | `1` | Nombre de Courant transmis au solveur ; son signe choisit le sens spatial. |
 | `max_u`, `min_u` | `100`, `0` | Valeurs haute et basse du créneau. |
 | `Solve("I")` | Implicite | Remplacer par `Solve("E")` pour essayer l'explicite. |
 
 L'emplacement du créneau est fixé dans [NumMethods/src/NumMethods.cpp](NumMethods/src/NumMethods.cpp). Si le domaine change, adapter aussi les bornes `40` et `60`.
+
+Le solveur calcule maintenant `dt = abs(CFL_ * dx_ / c_)`, pour une vitesse non nulle. Les deux modes utilisent une différence spatiale **backward** lorsque `CFL > 0` et **forward** lorsque `CFL < 0`. Pour Euler explicite amont, choisir `0 < abs(CFL) <= 1`.
 
 ## Lire les résultats
 
@@ -87,9 +95,8 @@ Le CSV n'a pas d'en-tête textuel, utilise la virgule comme séparateur et le po
 
 ## Points à connaître sur la version actuelle
 
-- **Temps physique à corriger.** `Solve()` calcule actuellement `dt = abs(CFL_ * dx_ * c_)`. La relation usuelle, pour une vitesse non nulle, serait `dt = abs(CFL_) * dx_ / abs(c_)`. De plus, le vecteur des temps est généré séparément avec `LinSpaced`. Les vitesses et les temps exportés ne doivent donc pas encore servir à une validation physique quantitative.
-- **Schémas à valider.** L'explicite sélectionne le stencil amont selon le signe de `CFL_`. L'implicite actuel fait le choix spatial opposé : il ne faut pas lui attribuer automatiquement la stabilité de l'Euler implicite amont. Le paramétrage fourni utilise `CFL = -1`.
-- **OpenMP à raccorder au bon module.** La cible exécutable lie OpenMP, mais la cible `Solver`, qui contient les directives, ne le lie pas encore. Le tutoriel montre la [ligne CMake à ajouter](docs/TUTORIEL_CMAKE.md#openmp-et-la-cible-solver) pour transmettre les options de compilation à ces sources.
+- **Temps exportés.** Le calcul de `dt` est corrigé, mais la ligne des temps reste construite avec `LinSpaced(N_t, 0, t_)`, pour `N_t = floor(t_ / dt)`. L'espacement exporté vaut donc `t_ / (N_t - 1)` et ne correspond pas exactement au pas `dt` utilisé par le schéma. Ce point reste à ajuster pour comparer précisément les résultats à une solution analytique.
+- **Sens de propagation.** `c` et `CFL` sont saisis séparément. Pour respecter `CFL = c * dt / dx`, ils doivent avoir le même signe. Pour inverser la propagation, changer les signes de **ces deux paramètres** ; changer seulement `c` ne change pas le sens spatial choisi par le code.
 - **Coût des calculs.** Le mode implicite reconstruit et factorise une matrice dense à chaque pas. Tous les états sont conservés en mémoire. Commencer avec un petit maillage et mesurer en `Release` avant d'augmenter les tailles.
 
 ## Travail en équipe
