@@ -16,7 +16,7 @@ int main(int, char**)
 
     float c = 300;
     float t = 10;
-    float CFL = 1;
+    float CFL = 0.5;
 
     float max_u = 100;
     float min_u = 0;
@@ -29,7 +29,7 @@ int main(int, char**)
 
     SolverWaveEquation WaveEquation(c, t,CFL, Mesh, u0);
     
-    WaveEquation.Solve("I");
+    WaveEquation.Solve("E");
     
     std::cout << WaveEquation.get_Results() ;
 
