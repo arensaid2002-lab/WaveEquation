@@ -15,8 +15,8 @@ int main(int, char**)
     float x2 = 100;
 
     float c = 300;
-    float t = 10000;
-    float CFL = -1;
+    float t = 10;
+    float CFL = 1;
 
     float max_u = 100;
     float min_u = 0;
