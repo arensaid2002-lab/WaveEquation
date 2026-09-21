@@ -3,7 +3,7 @@
 #include "NumMethods.h"
 #include <Eigen/Dense>
 #include <iostream>
-#include <omp.h>
+
 
 using namespace NumMethods;
 using namespace Eigen;
