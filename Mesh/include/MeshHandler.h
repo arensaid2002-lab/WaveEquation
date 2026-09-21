@@ -4,12 +4,13 @@ using namespace Eigen;
 
 namespace Mesh
 {
-    class MeshHandler
+   class  MeshHandler
     {
         public:
             MeshHandler(Index nb_element, float x_1, float x_2);
             ~MeshHandler();
             void GenerateMesh();
+            
             RowVectorXf get_Mesh();
 
         private:

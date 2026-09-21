@@ -16,11 +16,12 @@ namespace Solver
         c_ = c;
         t_ = t;
     }
+    
     VectorXf SolverWaveEquation::GenerateLinearSystem_EE(RowVectorXf u)
     {
         Index N = u.cols();
         VectorXf X(N);
-        string scheme_direction = (c_ > 0)? "backward" : "forward";
+        string scheme_direction = (CFL_ > 0)? "backward" : "forward";
 
         #pragma omp parallel for schedule(static) num_threads(16)
         for (Index i = 0; i < N; i++)
@@ -33,35 +34,42 @@ namespace Solver
     {
         Index N = u.cols();
         MatrixXf A = MatrixXf::Zero(N,N);
-        string scheme_direction = (c_ > 0)? "backward" : "forward";
+        string scheme_direction = (CFL_ > 0)? "forward" : "backward";
 
         #pragma omp parallel for schedule(static) num_threads(16)
         for (Index i = 0; i < N; i++)
         {
-            if (i == 0)
+            if(scheme_direction == "backward")
             {
-                A(i, N-1) = (scheme_direction == "backward")? (-CFL_): 0;
-                A(i, i) = (scheme_direction == "forward")? (CFL_) : 0;
+                if (i == 0)
+                {
+                    A(i, N-1) = (-CFL_);
+                }
+                else
+                {
+                    A(i, i-1) = (-CFL_);
+                }
+                A(i,i) =  (1+CFL_); 
             }
-            else if(i == N-1)
+            if (scheme_direction == "forward")
             {
-                A(i, 0) = (scheme_direction == "forward")? (CFL_) : 0;
-                A(i, i-1) = (scheme_direction == "backward")? (-CFL_): 0;
+                if (i == N-1)
+                {
+                    A(i, 0) = (CFL_);
+                }
+                else
+                {
+                    A(i, i+1) = (CFL_);
+                }
+                A(i,i) =  (1-CFL_); 
             }
-            else 
-            {
-                A(i, i-1) = (scheme_direction == "backward")? (-CFL_): 0;
-                A(i, i+1) = (scheme_direction == "forward")? (CFL_) : 0;
-            }
-            A(i,i) = (scheme_direction == "backward")? (1+CFL_) : (1-CFL_);
-
         } 
         
         return A;
     }
     MatrixXf SolverWaveEquation::Solve(string scheme)
     {
-        float dt = CFL_*dx_*c_;
+        float dt = abs(CFL_*dx_*c_);
         
         Index N_t = static_cast<Index>(std::floor(t_/dt));         
         Index N = Mesh_.cols();

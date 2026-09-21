@@ -10,13 +10,13 @@ using namespace NumMethods;
 int main(int, char**)
 {
     
-    Index nb_element = 1000;
+    Index nb_element = 100;
     float x1 = 0;
     float x2 = 100;
 
     float c = 300;
     float t = 10000;
-    float CFL = 1;
+    float CFL = -1;
 
     float max_u = 100;
     float min_u = 0;
@@ -36,3 +36,4 @@ int main(int, char**)
     NumMethods::saveMatrix(WaveEquation.get_Results(), "results.csv", ",");  // Comma-separated
 
 }
+

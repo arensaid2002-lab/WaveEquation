@@ -1,7 +1,9 @@
 #include "SolverHandler.h"
 #include <Eigen/Dense>
 #include <iostream>
+
 using namespace std;
+
 namespace Solver
 {
     class SolverWaveEquation : public SolverHandler 

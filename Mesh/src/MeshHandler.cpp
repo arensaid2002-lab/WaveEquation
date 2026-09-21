@@ -11,6 +11,7 @@ namespace Mesh
         x_1_ = x_1;
         x_2_ = x_2;
     }
+    
     MeshHandler::~MeshHandler(){}
     
     void MeshHandler::GenerateMesh()
