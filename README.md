@@ -12,6 +12,22 @@ L'exemple sert à explorer Euler explicite, Euler implicite, les conditions pér
 
 **Pour prendre le projet en main : [tutoriel CMake pour l'équipe](docs/TUTORIEL_CMAKE.md).** Les procédures couvrent [Windows](#démarrage-rapide-sous-windows), [macOS](docs/TUTORIEL_CMAKE.md#macos-avec-apple-clang-et-homebrew) et [Linux](docs/TUTORIEL_CMAKE.md#linux-avec-gcc-et-ninja).
 
+## Résultats animés
+
+Ces GIF proviennent de l'exécution du **solveur C++ du dépôt**, avec les mêmes paramètres pour les deux schémas : 100 points sur `[0, 100]`, `c = 300`, `CFL = 0,5` et un créneau initial d'amplitude 100. Les simulations sont calculées jusqu'à `t = 10` ; les animations montrent les 400 premiers pas, jusqu'à `t ≈ 0,6734`, au ralenti.
+
+### Euler explicite
+
+![Propagation du créneau avec Euler explicite amont, CFL 0,5](docs/assets/euler-explicit.gif)
+
+### Euler implicite
+
+![Propagation du créneau avec Euler implicite amont, CFL 0,5](docs/assets/euler-implicit.gif)
+
+Les axes et les instants affichés sont identiques. La courbe grise en pointillés indique le **profil initial fixe**. Sur ce cas, l'implicite diffuse davantage le créneau : à la fin de la fenêtre affichée, le maximum vaut environ **43,7**, contre **68,2** pour l'explicite.
+
+Le [guide des animations](docs/ANIMATIONS.md) explique comment relancer les deux calculs et régénérer les GIF sous Windows, macOS ou Linux. Python sert uniquement au tracé des CSV.
+
 ## Ce que contient le projet
 
 - Un maillage uniforme 1D construit avec Eigen.
@@ -32,6 +48,8 @@ L'exemple sert à explorer Euler explicite, Euler implicite, les conditions pér
 | [NumMethods/](NumMethods/) | Profil initial, différences spatiales et sauvegarde CSV. |
 | [CMakeLists.txt](CMakeLists.txt) | Dépendances, modules et cible exécutable `WaveEquation`. |
 | [CMakePresets.json](CMakePresets.json) | Configuration partagée pour Visual Studio Build Tools 2026, en x64. |
+| [examples/export_animations.cpp](examples/export_animations.cpp) | Export des deux schémas avec des paramètres communs, via la cible optionnelle `WaveEquationAnimations`. |
+| [scripts/generate_gifs.py](scripts/generate_gifs.py) | Génération des GIF à partir des CSV exportés. |
 
 Chaque module possède ses sources dans `src/`, ses en-têtes dans `include/` et son propre `CMakeLists.txt`.
 
@@ -73,9 +91,9 @@ Les réglages se font actuellement dans [Main/main.cpp](Main/main.cpp), puis né
 | `x1`, `x2` | `0`, `100` | Bornes spatiales. |
 | `c` | `300` | Paramètre de vitesse transmis au solveur. |
 | `t` | `10` | Durée demandée ; voir la remarque sur les temps exportés ci-dessous. |
-| `CFL` | `1` | Nombre de Courant transmis au solveur ; son signe choisit le sens spatial. |
+| `CFL` | `0.5` | Nombre de Courant transmis au solveur ; son signe choisit le sens spatial. |
 | `max_u`, `min_u` | `100`, `0` | Valeurs haute et basse du créneau. |
-| `Solve("I")` | Implicite | Remplacer par `Solve("E")` pour essayer l'explicite. |
+| `Solve("E")` | Explicite | Remplacer par `Solve("I")` pour essayer l'implicite. |
 
 L'emplacement du créneau est fixé dans [NumMethods/src/NumMethods.cpp](NumMethods/src/NumMethods.cpp). Si le domaine change, adapter aussi les bornes `40` et `60`.
 
@@ -95,9 +113,9 @@ Le CSV n'a pas d'en-tête textuel, utilise la virgule comme séparateur et le po
 
 ## Points à connaître sur la version actuelle
 
-- **Temps exportés.** Le calcul de `dt` est corrigé, mais la ligne des temps reste construite avec `LinSpaced(N_t, 0, t_)`, pour `N_t = floor(t_ / dt)`. L'espacement exporté vaut donc `t_ / (N_t - 1)` et ne correspond pas exactement au pas `dt` utilisé par le schéma. Ce point reste à ajuster pour comparer précisément les résultats à une solution analytique.
+- **Temps exportés.** Le nombre d'instants inclut maintenant l'état initial : `N_t = floor(t_ / dt) + 1`. La ligne des temps est répartie entre `0` et `t_` avec `LinSpaced`. Si `t_ / dt` n'est pas entier, son espacement `t_ / (N_t - 1)` diffère légèrement de `dt` ; en tenir compte pour les comparaisons temporelles précises.
 - **Sens de propagation.** `c` et `CFL` sont saisis séparément. Pour respecter `CFL = c * dt / dx`, ils doivent avoir le même signe. Pour inverser la propagation, changer les signes de **ces deux paramètres** ; changer seulement `c` ne change pas le sens spatial choisi par le code.
-- **Coût des calculs.** Le mode implicite reconstruit et factorise une matrice dense à chaque pas. Tous les états sont conservés en mémoire. Commencer avec un petit maillage et mesurer en `Release` avant d'augmenter les tailles.
+- **Coût des calculs.** Le mode implicite construit désormais sa matrice une seule fois, puis recalcule sa factorisation QR à chaque pas. Tous les états sont conservés en mémoire. Commencer avec un petit maillage et mesurer en `Release` avant d'augmenter les tailles.
 
 ## Travail en équipe
 

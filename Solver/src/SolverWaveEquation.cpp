@@ -71,15 +71,21 @@ namespace Solver
     {
         float dt = abs(CFL_*dx_/c_);
         
-        Index N_t = static_cast<Index>(std::floor(t_/dt));         
+        Index N_t = static_cast<Index>(std::floor(t_/dt) + 1);         
         Index N = Mesh_.cols();
 
         RowVectorXf time = VectorXf::LinSpaced(N_t, 0, t_);
 
         MatrixXf Results_u(N, N_t);
+        MatrixXf A;
+
         Results_u.col(0) = u0.transpose();
 
-        
+        if(scheme == "I")
+        {
+            A = GenerateLinearSystem_EI(u0.transpose());
+        }
+
         for (Index i = 0; i < N_t - 1; i++)
         {
             if(scheme == "E")
@@ -88,9 +94,7 @@ namespace Solver
             }
             else if(scheme == "I")
             {
-                MatrixXf A;
                 MatrixXf b;
-                A = GenerateLinearSystem_EI(Results_u.col(i).transpose());
                 Results_u.col(i+1) = A.colPivHouseholderQr().solve(Results_u.col(i)); 
             }
         }
